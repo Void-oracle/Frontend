@@ -1,0 +1,25 @@
+{
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/app",
+      "destination": "/main",
+      "permanent": true
+    },
+    {
+      "source": "/app/:path*",
+      "destination": "/main/:path*",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://77.221.156.179:8000/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "http://77.221.156.179:8000/health"
+    }
+  ]
+}
