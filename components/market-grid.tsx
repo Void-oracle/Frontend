@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { MarketCardAuto } from "@/components/market-card-auto"
 import { cn } from "@/lib/utils"
-import { Trophy, Newspaper, TrendingUp, MoreHorizontal, Search, X, RefreshCw, Loader2 } from "lucide-react"
+import { Trophy, Newspaper, TrendingUp, MoreHorizontal, Search, X, RefreshCw, Loader2, Plus } from "lucide-react"
+import Link from "next/link"
 
 interface Market {
   id: number
@@ -21,9 +22,10 @@ interface Market {
 
 const categories = [
   { id: "all", label: "All", icon: null },
+  { id: "crypto", label: "Crypto", icon: TrendingUp },
+  { id: "tech", label: "Tech", icon: Newspaper },
+  { id: "politics", label: "Politics", icon: Trophy },
   { id: "sports", label: "Sports", icon: Trophy },
-  { id: "news", label: "News", icon: Newspaper },
-  { id: "markets", label: "Markets", icon: TrendingUp },
   { id: "other", label: "Other", icon: MoreHorizontal },
 ]
 
@@ -205,14 +207,33 @@ export function MarketGrid() {
 
       {filteredMarkets.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <p>No markets found</p>
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery("")}
-              className="mt-2 text-primary hover:underline"
-            >
-              Clear search
-            </button>
+          {markets.length === 0 ? (
+            <>
+              <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-4">
+                <Plus className="h-8 w-8 text-cyan-400" />
+              </div>
+              <p className="text-lg font-medium text-foreground mb-2">No markets yet</p>
+              <p className="text-sm mb-4">Be the first to create a prediction market!</p>
+              <Link
+                href="/main/create"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white font-semibold hover:opacity-90 transition-opacity"
+              >
+                <Plus className="h-4 w-4" />
+                Create Market
+              </Link>
+            </>
+          ) : (
+            <>
+              <p>No markets found</p>
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className="mt-2 text-primary hover:underline"
+                >
+                  Clear search
+                </button>
+              )}
+            </>
           )}
         </div>
       ) : (

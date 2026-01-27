@@ -5,6 +5,47 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
+// ==================== Market Types ====================
+
+export interface CreateMarketRequest {
+  ticker: string;
+  query: string;
+  description?: string;
+  category?: string;
+  deadline?: string;
+  check_interval_minutes?: number;
+}
+
+export interface Market {
+  id: number;
+  market_id: string;
+  ticker: string;
+  query: string;
+  description: string | null;
+  category: string;
+  deadline: string | null;
+  target_tweets: number;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+  created_by: string;
+  monitoring_active: number;
+  check_interval_minutes: number;
+}
+
+export interface CreateMarketResponse {
+  success: boolean;
+  message: string;
+  market: Market;
+}
+
+export interface ListMarketsResponse {
+  count: number;
+  markets: Market[];
+}
+
+// ==================== Oracle Types ====================
+
 export interface OraclePredictionRequest {
   ticker: string;
   query: string;
@@ -149,13 +190,91 @@ export async function checkHealth(): Promise<{ status: string; service: string }
 }
 
 /**
- * Get list of all tracked markets
+ * Get list of all tracked markets (legacy - oracle endpoint)
  */
 export async function getTrackedMarkets(): Promise<{ count: number; markets: string[] }> {
   const response = await fetch(`${API_BASE}/oracle/markets`);
 
   if (!response.ok) {
     throw new Error('Failed to fetch markets');
+  }
+
+  return response.json();
+}
+
+// ==================== Markets Management ====================
+
+/**
+ * Create a new prediction market
+ */
+export async function createMarket(request: CreateMarketRequest): Promise<CreateMarketResponse> {
+  const response = await fetch(`${API_BASE}/markets/create`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(error.detail || `API error: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get list of all markets
+ */
+export async function listMarkets(options?: {
+  status?: string;
+  category?: string;
+  monitoring_active?: boolean;
+}): Promise<ListMarketsResponse> {
+  const params = new URLSearchParams();
+  if (options?.status) params.append('status', options.status);
+  if (options?.category) params.append('category', options.category);
+  if (options?.monitoring_active !== undefined) {
+    params.append('monitoring_active', options.monitoring_active.toString());
+  }
+
+  const url = params.toString() 
+    ? `${API_BASE}/markets/list?${params}` 
+    : `${API_BASE}/markets/list`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch markets');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get market details by ID
+ */
+export async function getMarket(marketId: string): Promise<Market> {
+  const response = await fetch(`${API_BASE}/markets/${marketId}`);
+
+  if (!response.ok) {
+    throw new Error(`Market ${marketId} not found`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete a market
+ */
+export async function deleteMarket(marketId: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_BASE}/markets/${marketId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete market ${marketId}`);
   }
 
   return response.json();
