@@ -17,22 +17,22 @@ export default function AppDashboard() {
         {/* Fallback gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#030308] via-[#050510] to-[#02020a]" />
         
-        {/* Video with heavy darkening and blur */}
+        {/* Video background - very visible */}
         <video
           autoPlay
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-30 hidden sm:block"
+          className="absolute inset-0 w-full h-full object-cover opacity-90 hidden sm:block"
           style={{ 
-            filter: "brightness(0.2) blur(8px)",
+            filter: "brightness(0.8) blur(2px)",
           }}
         >
           <source src="/hero-particles.mp4" type="video/mp4" />
         </video>
 
-        {/* Dark overlay for readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
+        {/* Minimal overlay */}
+        <div className="absolute inset-0 bg-black/10" />
         
         {/* Subtle vignette effect */}
         <div 
