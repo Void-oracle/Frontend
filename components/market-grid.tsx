@@ -58,25 +58,25 @@ export function MarketGrid() {
   // Fetch markets from API
   const fetchMarkets = async () => {
     try {
-        const response = await fetch(`/api/v1/oracle/markets`)
+        const response = await fetch(`/api/v1/markets/list`)
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }
       const data = await response.json()
       
       // Transform API data to frontend format
-      const transformedMarkets: Market[] = data.markets.map((m: any, index: number) => ({
-        id: index + 1,
+      const transformedMarkets: Market[] = data.markets.map((m: any) => ({
+        id: m.id,
         market_id: m.market_id,
         title: createTitle(m.query, m.ticker),
-        description: m.query,
+        description: m.description || m.query,
         ticker: m.ticker,
-        marketProbability: Math.round(m.market_score || 50),
-        aiTruthScore: Math.round(m.ai_score || 50),
+        marketProbability: Math.round(m.market_score ?? 50),
+        aiTruthScore: Math.round(m.ai_score ?? 50),
         volume: "$0",  // Not tracked yet
         endDate: formatDeadline(m.deadline),
-        category: m.category || "markets",
-        lastUpdate: m.last_update,
+        category: m.category || "crypto",
+        lastUpdate: m.created_at,
       }))
       
       setMarkets(transformedMarkets)

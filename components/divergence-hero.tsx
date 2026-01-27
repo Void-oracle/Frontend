@@ -3,8 +3,15 @@
 import type React from "react"
 import { useEffect, useState, useCallback } from "react"
 import { motion } from "framer-motion"
-import { Activity, Brain, TrendingUp } from "lucide-react"
+import { Activity, Brain, TrendingUp, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+interface MarketStats {
+  avgAiScore: number
+  avgMarketScore: number
+  avgDivergence: number
+  activeMarkets: number
+}
 
 function ShuffleNumber({
   value,
@@ -40,12 +47,75 @@ function ShuffleNumber({
 }
 
 export function DivergenceHero() {
+  const [stats, setStats] = useState<MarketStats>({
+    avgAiScore: 0,
+    avgMarketScore: 0,
+    avgDivergence: 0,
+    activeMarkets: 0,
+  })
+  const [isLoading, setIsLoading] = useState(true)
   const [divergenceValue, setDivergenceValue] = useState(0)
   const [isHovering, setIsHovering] = useState(false)
   const [isShuffling, setIsShuffling] = useState(false)
-  const targetValue = 34.7
+
+  // Fetch real data from API
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/markets/list')
+      if (!response.ok) return
+      
+      const data = await response.json()
+      const markets = data.markets || []
+      
+      if (markets.length === 0) {
+        setStats({
+          avgAiScore: 0,
+          avgMarketScore: 0,
+          avgDivergence: 0,
+          activeMarkets: 0,
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // Calculate averages from markets with scores
+      const marketsWithScores = markets.filter((m: any) => 
+        m.ai_score !== undefined || m.market_score !== undefined
+      )
+
+      const avgAiScore = marketsWithScores.length > 0
+        ? marketsWithScores.reduce((sum: number, m: any) => sum + (m.ai_score ?? 50), 0) / marketsWithScores.length
+        : 50
+
+      const avgMarketScore = marketsWithScores.length > 0
+        ? marketsWithScores.reduce((sum: number, m: any) => sum + (m.market_score ?? 50), 0) / marketsWithScores.length
+        : 50
+
+      const avgDivergence = Math.abs(avgAiScore - avgMarketScore)
+
+      setStats({
+        avgAiScore,
+        avgMarketScore,
+        avgDivergence,
+        activeMarkets: markets.length,
+      })
+      
+      setIsLoading(false)
+    } catch (error) {
+      console.error('Failed to fetch stats:', error)
+      setIsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
+    fetchStats()
+    const interval = setInterval(fetchStats, 30000) // Refresh every 30s
+    return () => clearInterval(interval)
+  }, [fetchStats])
+
+  // Animate divergence value
+  useEffect(() => {
+    const targetValue = stats.avgDivergence
     const duration = 1500
     const steps = 60
     const increment = targetValue / steps
@@ -62,7 +132,7 @@ export function DivergenceHero() {
     }, duration / steps)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [stats.avgDivergence])
 
   const handleHover = useCallback(() => {
     setIsHovering(true)
@@ -95,24 +165,57 @@ export function DivergenceHero() {
         <div className="relative flex flex-col items-center gap-6 lg:flex-row lg:items-start lg:justify-between">
           {/* Left Content */}
           <div className="flex-1 text-center lg:text-left">
-            <h1 className={cn(
-              "mb-2 text-lg lg:text-xl font-mono uppercase tracking-[0.3em] transition-colors duration-200",
-              isHovering ? "text-cyan-400" : "text-white/60",
-            )}>
-              Divergence Index
-            </h1>
+            <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
+              <h1 className={cn(
+                "text-lg lg:text-xl font-mono uppercase tracking-[0.3em] transition-colors duration-200",
+                isHovering ? "text-cyan-400" : "text-white/60",
+              )}>
+                Divergence Index
+              </h1>
+              <button
+                onClick={fetchStats}
+                className="p-1 rounded hover:bg-white/10 transition-colors"
+                title="Refresh stats"
+              >
+                <RefreshCw className={cn(
+                  "h-3.5 w-3.5 transition-colors",
+                  isLoading ? "animate-spin text-cyan-400" : "text-white/30 hover:text-white/60"
+                )} />
+              </button>
+            </div>
             <p className={cn(
               "mb-5 max-w-md text-[13px] font-mono transition-colors duration-200",
               isHovering ? "text-white/60" : "text-white/30",
             )}>
-              Real-time gap between AI sentiment and market probabilities
+              {stats.activeMarkets > 0 
+                ? "Real-time gap between AI sentiment and market probabilities"
+                : "Create a market to start tracking divergence"
+              }
             </p>
 
             {/* Stats Row */}
             <div className="flex flex-wrap justify-center gap-2 lg:justify-start">
-              <StatCard icon={Brain} label="AI Truth" value="67.3%" isHovering={isHovering} color="violet" />
-              <StatCard icon={TrendingUp} label="Market" value="32.6%" isHovering={isHovering} color="cyan" />
-              <StatCard icon={Activity} label="Active" value="24" isHovering={isHovering} color="green" />
+              <StatCard 
+                icon={Brain} 
+                label="AI Truth" 
+                value={stats.activeMarkets > 0 ? `${stats.avgAiScore.toFixed(1)}%` : "—"} 
+                isHovering={isHovering} 
+                color="violet" 
+              />
+              <StatCard 
+                icon={TrendingUp} 
+                label="Market" 
+                value={stats.activeMarkets > 0 ? `${stats.avgMarketScore.toFixed(1)}%` : "—"} 
+                isHovering={isHovering} 
+                color="cyan" 
+              />
+              <StatCard 
+                icon={Activity} 
+                label="Active" 
+                value={stats.activeMarkets.toString()} 
+                isHovering={isHovering} 
+                color="green" 
+              />
             </div>
           </div>
 
@@ -180,7 +283,11 @@ export function DivergenceHero() {
                   "text-3xl font-mono font-semibold transition-colors duration-200",
                   isHovering ? "text-white" : "text-white/80",
                 )}>
-                  <ShuffleNumber value={divergenceValue} isShuffling={isShuffling} />
+                  {stats.activeMarkets > 0 ? (
+                    <ShuffleNumber value={divergenceValue} isShuffling={isShuffling} />
+                  ) : (
+                    <span className="text-white/30">—</span>
+                  )}
                 </span>
                 <span className="text-[10px] font-mono uppercase tracking-wider text-white/30">Divergence</span>
               </div>
@@ -189,11 +296,18 @@ export function DivergenceHero() {
             {/* Status badge */}
             <div className={cn(
               "mt-3 rounded-md px-3 py-1 text-[11px] font-mono uppercase tracking-wider transition-all duration-200 border",
-              divergenceValue > 25 
-                ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" 
-                : "bg-white/5 text-white/40 border-white/10",
+              stats.activeMarkets === 0
+                ? "bg-white/5 text-white/40 border-white/10"
+                : divergenceValue > 25 
+                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" 
+                  : "bg-white/5 text-white/40 border-white/10",
             )}>
-              {divergenceValue > 25 ? "High Opportunity" : "Low Divergence"}
+              {stats.activeMarkets === 0 
+                ? "No Markets" 
+                : divergenceValue > 25 
+                  ? "High Opportunity" 
+                  : "Low Divergence"
+              }
             </div>
           </div>
         </div>
