@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
 import { CosmicBackground } from "@/components/cosmic-background"
-import { Calendar, Clock, Tag, FileText, AlertCircle, Loader2, CheckCircle2, Sparkles } from "lucide-react"
+import { Calendar, Clock, Tag, FileText, AlertCircle, Loader2, CheckCircle2, Sparkles, Link2 } from "lucide-react"
 import { createMarket } from "@/lib/api/oracle"
 import Link from "next/link"
 
@@ -33,6 +33,7 @@ export default function CreateMarketPage() {
     category: "crypto",
     endDate: "",
     endTime: "",
+    externalMarketUrl: "",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,6 +68,7 @@ export default function CreateMarketPage() {
         description: formData.description || undefined,
         category: formData.category,
         deadline,
+        external_market_url: formData.externalMarketUrl || undefined,
       })
 
       setCreatedMarket({
@@ -83,6 +85,7 @@ export default function CreateMarketPage() {
         category: "crypto",
         endDate: "",
         endTime: "",
+        externalMarketUrl: "",
       })
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to create market")
@@ -203,6 +206,26 @@ export default function CreateMarketPage() {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       className="w-full px-4 py-3 rounded-xl bg-card/30 border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
                     />
+                  </div>
+
+                  {/* External Market URL */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Link2 className="h-4 w-4" />
+                      External Market URL
+                      <span className="text-xs text-muted-foreground">(optional)</span>
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://polymarket.com/event/... or https://predictfun.com/..."
+                      value={formData.externalMarketUrl}
+                      onChange={(e) => setFormData({ ...formData, externalMarketUrl: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-card/30 border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 transition-colors"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Link to existing market on Polymarket, PredictFun, or other prediction markets. 
+                      If provided, we'll track real market probability.
+                    </p>
                   </div>
 
                   {/* Category */}

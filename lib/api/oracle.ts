@@ -14,6 +14,7 @@ export interface CreateMarketRequest {
   category?: string;
   deadline?: string;
   check_interval_minutes?: number;
+  external_market_url?: string;
 }
 
 export interface Market {
@@ -31,6 +32,14 @@ export interface Market {
   created_by: string;
   monitoring_active: number;
   check_interval_minutes: number;
+  external_market_url: string | null;
+  // AI prediction data
+  ai_score?: number;
+  market_score?: number;
+  divergence_index?: number;
+  confidence?: number;
+  vocal_summary?: string;
+  last_prediction?: string;
 }
 
 export interface CreateMarketResponse {
