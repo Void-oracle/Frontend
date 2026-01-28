@@ -12,12 +12,14 @@ interface Market {
   title: string
   description: string
   ticker: string
-  marketProbability: number
+  marketProbability: number | null  // null if no external market linked
   aiTruthScore: number
   volume: string
   endDate: string
   category: string
   lastUpdate?: string
+  externalMarketUrl?: string | null
+  status?: string
 }
 
 const categories = [
@@ -71,12 +73,14 @@ export function MarketGrid() {
         title: createTitle(m.query, m.ticker),
         description: m.description || m.query,
         ticker: m.ticker,
-        marketProbability: Math.round(m.market_score ?? 50),
+        marketProbability: m.external_market_url ? Math.round(m.market_score ?? 50) : null,
         aiTruthScore: Math.round(m.ai_score ?? 50),
         volume: "$0",  // Not tracked yet
         endDate: formatDeadline(m.deadline),
         category: m.category || "crypto",
         lastUpdate: m.created_at,
+        externalMarketUrl: m.external_market_url,
+        status: m.status,
       }))
       
       setMarkets(transformedMarkets)

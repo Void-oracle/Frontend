@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils"
 
 interface MarketStats {
   avgAiScore: number
-  avgMarketScore: number
-  avgDivergence: number
+  avgMarketScore: number | null  // null if no markets have external links
+  avgDivergence: number | null
   activeMarkets: number
+  linkedMarkets: number  // markets with external_market_url
 }
 
 function ShuffleNumber({
@@ -49,9 +50,10 @@ function ShuffleNumber({
 export function DivergenceHero() {
   const [stats, setStats] = useState<MarketStats>({
     avgAiScore: 0,
-    avgMarketScore: 0,
-    avgDivergence: 0,
+    avgMarketScore: null,
+    avgDivergence: null,
     activeMarkets: 0,
+    linkedMarkets: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
   const [divergenceValue, setDivergenceValue] = useState(0)
@@ -70,34 +72,38 @@ export function DivergenceHero() {
       if (markets.length === 0) {
         setStats({
           avgAiScore: 0,
-          avgMarketScore: 0,
-          avgDivergence: 0,
+          avgMarketScore: null,
+          avgDivergence: null,
           activeMarkets: 0,
+          linkedMarkets: 0,
         })
         setIsLoading(false)
         return
       }
 
-      // Calculate averages from markets with scores
-      const marketsWithScores = markets.filter((m: any) => 
-        m.ai_score !== undefined || m.market_score !== undefined
-      )
-
-      const avgAiScore = marketsWithScores.length > 0
-        ? marketsWithScores.reduce((sum: number, m: any) => sum + (m.ai_score ?? 50), 0) / marketsWithScores.length
+      // Calculate AI score average from all markets
+      const marketsWithAiScore = markets.filter((m: any) => m.ai_score !== undefined)
+      const avgAiScore = marketsWithAiScore.length > 0
+        ? marketsWithAiScore.reduce((sum: number, m: any) => sum + (m.ai_score ?? 50), 0) / marketsWithAiScore.length
         : 50
 
-      const avgMarketScore = marketsWithScores.length > 0
-        ? marketsWithScores.reduce((sum: number, m: any) => sum + (m.market_score ?? 50), 0) / marketsWithScores.length
-        : 50
+      // Calculate market score only from markets with external links
+      const linkedMarkets = markets.filter((m: any) => m.external_market_url)
+      const avgMarketScore = linkedMarkets.length > 0
+        ? linkedMarkets.reduce((sum: number, m: any) => sum + (m.market_score ?? 50), 0) / linkedMarkets.length
+        : null
 
-      const avgDivergence = Math.abs(avgAiScore - avgMarketScore)
+      // Calculate divergence only if we have linked markets
+      const avgDivergence = avgMarketScore !== null 
+        ? Math.abs(avgAiScore - avgMarketScore) 
+        : null
 
       setStats({
         avgAiScore,
         avgMarketScore,
         avgDivergence,
         activeMarkets: markets.length,
+        linkedMarkets: linkedMarkets.length,
       })
       
       setIsLoading(false)
@@ -115,7 +121,7 @@ export function DivergenceHero() {
 
   // Animate divergence value
   useEffect(() => {
-    const targetValue = stats.avgDivergence
+    const targetValue = stats.avgDivergence ?? 0
     const duration = 1500
     const steps = 60
     const increment = targetValue / steps
@@ -197,7 +203,7 @@ export function DivergenceHero() {
             <div className="flex flex-wrap justify-center gap-2 lg:justify-start">
               <StatCard 
                 icon={Brain} 
-                label="AI Truth" 
+                label="AI Oracle" 
                 value={stats.activeMarkets > 0 ? `${stats.avgAiScore.toFixed(1)}%` : "—"} 
                 isHovering={isHovering} 
                 color="violet" 
@@ -205,9 +211,10 @@ export function DivergenceHero() {
               <StatCard 
                 icon={TrendingUp} 
                 label="Market" 
-                value={stats.activeMarkets > 0 ? `${stats.avgMarketScore.toFixed(1)}%` : "—"} 
+                value={stats.avgMarketScore !== null ? `${stats.avgMarketScore.toFixed(1)}%` : "N/A"} 
                 isHovering={isHovering} 
                 color="cyan" 
+                subtitle={stats.linkedMarkets > 0 ? `${stats.linkedMarkets} linked` : "no links"}
               />
               <StatCard 
                 icon={Activity} 
@@ -283,13 +290,17 @@ export function DivergenceHero() {
                   "text-3xl font-mono font-semibold transition-colors duration-200",
                   isHovering ? "text-white" : "text-white/80",
                 )}>
-                  {stats.activeMarkets > 0 ? (
+                  {stats.avgDivergence !== null ? (
                     <ShuffleNumber value={divergenceValue} isShuffling={isShuffling} />
+                  ) : stats.activeMarkets > 0 ? (
+                    <span className="text-violet-400 text-2xl">AI</span>
                   ) : (
                     <span className="text-white/30">—</span>
                   )}
                 </span>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-white/30">Divergence</span>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-white/30">
+                  {stats.avgDivergence !== null ? "Divergence" : stats.activeMarkets > 0 ? "Only Mode" : "No Data"}
+                </span>
               </div>
             </div>
 
@@ -298,15 +309,19 @@ export function DivergenceHero() {
               "mt-3 rounded-md px-3 py-1 text-[11px] font-mono uppercase tracking-wider transition-all duration-200 border",
               stats.activeMarkets === 0
                 ? "bg-white/5 text-white/40 border-white/10"
-                : divergenceValue > 25 
-                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" 
-                  : "bg-white/5 text-white/40 border-white/10",
+                : stats.avgDivergence === null
+                  ? "bg-violet-500/10 text-violet-400 border-violet-500/30"
+                  : divergenceValue > 25 
+                    ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" 
+                    : "bg-white/5 text-white/40 border-white/10",
             )}>
               {stats.activeMarkets === 0 
                 ? "No Markets" 
-                : divergenceValue > 25 
-                  ? "High Opportunity" 
-                  : "Low Divergence"
+                : stats.avgDivergence === null
+                  ? "AI Analysis Only"
+                  : divergenceValue > 25 
+                    ? "High Opportunity" 
+                    : "Low Divergence"
               }
             </div>
           </div>
@@ -322,12 +337,14 @@ function StatCard({
   value,
   isHovering,
   color = "cyan",
+  subtitle,
 }: {
   icon: React.ElementType
   label: string
   value: string
   isHovering: boolean
   color?: "cyan" | "violet" | "green"
+  subtitle?: string
 }) {
   const colors = {
     cyan: {
@@ -362,10 +379,13 @@ function StatCard({
         <Icon className={cn("h-3 w-3", c.icon, isHovering && c.glow)} />
       </div>
       <div>
-        <p className="text-[9px] font-mono uppercase tracking-wider text-white/30">{label}</p>
+        <p className="text-[9px] font-mono uppercase tracking-wider text-white/30 flex items-center gap-1">
+          {label}
+          {subtitle && <span className="text-white/20 normal-case">({subtitle})</span>}
+        </p>
         <p className={cn(
           "text-xs font-mono font-medium tabular-nums transition-colors",
-          isHovering ? "text-white/90" : "text-white/60",
+          value === "N/A" ? "text-white/30" : (isHovering ? "text-white/90" : "text-white/60"),
         )}>{value}</p>
       </div>
     </div>

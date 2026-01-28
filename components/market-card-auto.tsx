@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { Clock, TrendingUp, Zap } from "lucide-react"
+import { Clock, TrendingUp, Zap, Brain, Link2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useAutoOracle } from "@/hooks/use-auto-oracle"
@@ -13,12 +13,14 @@ interface Market {
   title: string
   description?: string
   ticker?: string
-  marketProbability: number
+  marketProbability: number | null  // null if no external market linked
   aiTruthScore: number
   volume: string
   endDate: string
   category?: string
   lastUpdate?: string
+  externalMarketUrl?: string | null
+  status?: string
 }
 
 export function MarketCardAuto({ 
@@ -41,9 +43,10 @@ export function MarketCardAuto({
   })
   
   const aiScore = result?.aiScore ?? market.aiTruthScore
-  const marketScore = result?.marketScore ?? market.marketProbability
-  const divergence = Math.abs(aiScore - marketScore)
-  const isHighDivergence = divergence > 20
+  const hasExternalMarket = market.externalMarketUrl || market.marketProbability !== null
+  const marketScore = hasExternalMarket ? (result?.marketScore ?? market.marketProbability ?? 50) : null
+  const divergence = marketScore !== null ? Math.abs(aiScore - marketScore) : null
+  const isHighDivergence = divergence !== null && divergence > 20
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), index * 80)
@@ -138,33 +141,52 @@ export function MarketCardAuto({
 
         {/* Progress Bars - Glowing */}
         <div className="mb-4 space-y-3">
+          {marketScore !== null ? (
+            <GlowingProgressBar 
+              label="Market" 
+              value={marketScore} 
+              isHovering={isHovering}
+              isLive={!!result}
+              color="cyan"
+              icon={<Link2 className="h-2.5 w-2.5" />}
+            />
+          ) : (
+            <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider mb-1">
+              <span className="text-white/40 flex items-center gap-1.5">
+                Market
+                <span className="text-white/20 normal-case tracking-normal">(not linked)</span>
+              </span>
+              <span className="text-white/30">—</span>
+            </div>
+          )}
           <GlowingProgressBar 
-            label="Market" 
-            value={marketScore} 
-            isHovering={isHovering}
-            isLive={!!result}
-            color="cyan"
-          />
-          <GlowingProgressBar 
-            label="AI Truth" 
+            label="AI Oracle" 
             value={aiScore} 
             isHovering={isHovering}
             isLive={!!result}
             color="violet"
+            icon={<Brain className="h-2.5 w-2.5" />}
           />
         </div>
 
-        {/* Divergence Badge */}
-        <div className={cn(
-          "mb-4 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-mono transition-all duration-200",
-          isHighDivergence
-            ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
-            : "bg-white/5 text-white/50 border border-white/10",
-        )}>
-          <TrendingUp className="h-3 w-3" />
-          <span className="tabular-nums">{divergence.toFixed(1)}%</span>
-          <span className="text-white/30">divergence</span>
-        </div>
+        {/* Divergence Badge or AI Only Badge */}
+        {divergence !== null ? (
+          <div className={cn(
+            "mb-4 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-mono transition-all duration-200",
+            isHighDivergence
+              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+              : "bg-white/5 text-white/50 border border-white/10",
+          )}>
+            <TrendingUp className="h-3 w-3" />
+            <span className="tabular-nums">{divergence.toFixed(1)}%</span>
+            <span className="text-white/30">divergence</span>
+          </div>
+        ) : (
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-mono bg-violet-500/10 text-violet-400 border border-violet-500/20">
+            <Brain className="h-3 w-3" />
+            <span>AI Analysis Only</span>
+          </div>
+        )}
 
         {/* Footer */}
         <div className={cn(
@@ -200,12 +222,14 @@ function GlowingProgressBar({
   isHovering,
   isLive = false,
   color = "cyan",
+  icon,
 }: {
   label: string
   value: number
   isHovering: boolean
   isLive?: boolean
   color?: "cyan" | "violet"
+  icon?: React.ReactNode
 }) {
   const [width, setWidth] = useState(0)
 
@@ -228,6 +252,7 @@ function GlowingProgressBar({
     <div>
       <div className="mb-1.5 flex items-center justify-between text-[10px] font-mono uppercase tracking-wider">
         <span className="text-white/40 flex items-center gap-1.5">
+          {icon && <span className="text-white/30">{icon}</span>}
           {label}
           {isLive && (
             <motion.span 
