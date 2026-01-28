@@ -26,6 +26,7 @@ interface MarketInfo {
   confidence: number
   vocal_summary: string
   predictions_count: number
+  external_market_url?: string | null
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -86,7 +87,8 @@ export default function MarketPage() {
   useEffect(() => {
     const fetchMarket = async () => {
       try {
-        const response = await fetch(`/api/v1/oracle/markets`)
+        // Try new API endpoint first
+        const response = await fetch(`/api/v1/markets/list`)
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`)
         }
@@ -94,7 +96,22 @@ export default function MarketPage() {
         
         const found = data.markets.find((m: any) => m.market_id === marketId)
         if (found) {
-          setMarket(found)
+          setMarket({
+            market_id: found.market_id,
+            ticker: found.ticker,
+            query: found.query,
+            description: found.description || found.query,
+            status: found.status,
+            deadline: found.deadline,
+            category: found.category,
+            ai_score: found.ai_score ?? 50,
+            market_score: found.external_market_url ? (found.market_score ?? 50) : 50,
+            divergence: found.divergence_index ?? 0,
+            confidence: found.confidence ?? 0.5,
+            vocal_summary: found.vocal_summary || "",
+            predictions_count: 0,
+            external_market_url: found.external_market_url,
+          })
           setError(null)
         } else {
           setError(`Market ${marketId} not found`)
